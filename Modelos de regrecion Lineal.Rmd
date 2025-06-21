@@ -1,0 +1,291 @@
+
+El dataset USArrests proporciona estadísticas sobre crímenes violentos cometidos en los 50 estados de Estados Unidos en 1973. Específicamente, el dataset incluye tasas de arresto (por cada 100,000 habitantes) por agresiones con violencia (incluyendo pero no limitandose a robos o atracos), homicidios y violaciones, así como la proporción de población urbana en cada estado. Considerando $\alpha=0.05$
+
+
+##Lo primero que vamos a hacer es ajustar modelos de regresion lineal simple
+
+```{r setup, include=FALSE}
+# Cargar el dataset
+data("USArrests")
+
+# Ajustamos los modelotes
+modelo1 <- lm(Murder ~ Assault, data = USArrests)
+modelo2 <- lm(Murder ~ UrbanPop, data = USArrests)
+
+# Graficamos de manera normal pq me da flojera qqplot
+
+plot(USArrests$Assault, USArrests$Murder, 
+     main = "Murder ~ Assault",
+     xlab = "Assault (por 100k)", ylab = "Murder (por 100k)")
+abline(modelo1, col = "blue")
+
+plot(USArrests$UrbanPop, USArrests$Murder,
+     main = "Murder ~ UrbanPop",
+     xlab = "UrbanPop (%)", ylab = "Murder (por 100k)")
+abline(modelo2, col = "red")
+
+# El summary poderoso
+summary(modelo1)
+summary(modelo2)
+
+```
+
+De esto notemos que podemos observar e interpretar lo siguiente:
+
+-   Murder \~ Assault: esperas una relación positiva ya que estados con más agresiones probablemente también tengan más asesinatos.
+
+-   Murder \~ UrbanPop:Notemos que un estado tenga más población urbana no necesariamente implica más asesinatos.
+
+Ademas esto lo podemos reafirmar con el sumarry de ambos modelos el cual nos ayuda ver que en efecto nuestras interpretaciones son correctas
+
+## Veamos si existe una relacion lineal entre Assault \~ UrbanPop
+
+```{r setup, include=FALSE}
+# Modelo Assault ~ UrbanPop
+modelo3 <- lm(Assault ~ UrbanPop, data = USArrests)
+summary(modelo3)
+
+#Plotiamos
+plot(USArrests$UrbanPop, USArrests$Assault,
+     main = "Assault vs UrbanPop",
+     xlab = "Porcentaje de Población Urbana",
+     ylab = "Assault (por cada 100k habitantes)",
+     pch = 19, col = "darkorange")
+abline(modelo3, col = "blue", lwd = 2)
+
+summary(modelo3)
+
+```
+
+Como podemos ver por el sumarry y el p value tenemos que no hay evidencia para pensar que existe una relacion entre estas dos variables
+
+## Demosle interpretacion a cada 1 de las betas_0 de los modelos
+
+```{r setup, include=FALSE}
+summary(modelo1)
+summary(modelo2)
+summary(modelo3)
+```
+
+Fijandonos en ambos sumaris tenemos lo siguiente
+
+-   Para el modelo 1
+    -   $\beta_0$ : 0.631683, Para interpretarlo tenemos que fijarnos en el modelo y tendriamos que para este caso reprecenta el numero de asesinatos esperados si no hubiera ningun asalto, en este caso no le veo mucho sentido pero esa seria la intepretacion
+
+    -   $\beta_1$ : 0.041909, En este caso tendriamos que significa que por cada aumento de 1 arresto por agresión violenta por cada 100,000 habitantes, se espera un aumento promedio de 0.0402 asesinatos por cada 100,000 habitantes.
+-   Para el modelo 2
+    -   $\beta_0$ : 6.41594, Para interpretarlo tendriamos que este seria el numero esperado de asesinatos si la poblacion fuera 0 cosa que no tiene mucho sentido
+
+    -   $\beta_1$ : 0.02093, En este caso tenemos que por cada aumento de 1% en la población urbana, se espera un aumento de 0.02093 asesinatos por cada 100,000 habitantes, en promedio.
+-   Para el modelo 3
+    -   $\beta_0$ : 73.0766, Para interpretarlo tendriamos que este seria el numero esperado de asaltos si la poblacion fuera 0 cosa que no tiene mucho sentido
+
+    -   $\beta_1$ : 1.4904, En este caso tenemos que Por cada aumento de 1% en la población urbana, se esperan aproximadamente 1.49 arrestos adicionales por agresión violenta por cada 100,000 habitantes.
+
+## Planteamos el siguiente caso hipotetico para entender de mejor manera los datos. 
+
+#Digamos que estamos en un estado en el que el gobierno estatal planea una serie de medidas para las cuales proyecta que lograrán disminuir la tasa de agresiones violentas (Assault) por cada 100,000 habitantes a alrededor de 140. La población urbana de ese estado representa 5/6 de la población total. El gobierno está interesado en anticipar el efecto que eso tendrá en la tasa de asesinatos (por cada 100,000 habitantes).
+
+Elegiremos el primer modelo ya que este tiene una $R^2$ mucho mejor que el segundo a su vez que como vimos no hay mucha reolacion entre ambas variables en cambio el primer modelo tiene una efectividad mayor como podemos ver en el sumarry y ademas la relacion entre las variables es mayor
+
+Seleccionando el modelo es la estimacion puntual la cual va ser daada por el siguiente modelo:
+
+$$Y = \beta_0 + \beta_1 X \implies 0.631683 + (0.041909) 140 = 6.498943$$
+Ademas se nos indica obtener el intervalo de prediccion de este modelo es decir este supuesto estado de esta situacion planeteada y la tenemos aqui:
+
+```{r setup, include=FALSE}
+nuevo <- data.frame(Assault = 140)
+predict(modelo1, newdata = nuevo, interval = "prediction", level = 0.95)
+
+```
+Ahora interpretemos $\beta_1$ y para esto tenemos la siguiente interpretacion
+
+  -Por cada arresto adicional por agresión violenta por cada 100,000 habitantes, se    espera un aumento promedio de 0.041909 asesinatos por cada 100,000 habitantes.
+  
+
+## Consideremos la variable $W=\frac{\text { assaults }}{\sqrt{\text { UrbanPop }}}$ y interpretarla
+
+Notemos que la variable $W=\frac{\text { assaults }}{\sqrt{\text { UrbanPop }}}$ busca ajustar la tasa de asaltos por el tamaño de la población urbana.
+
+Y ahora realicemos el ajuste en R
+
+```{r setup, include=FALSE}
+# Crear la nueva variable
+USArrests$W <- USArrests$Assault / sqrt(USArrests$UrbanPop)
+
+# Diagrama de dispersión de Murder vs W
+plot(USArrests$W, USArrests$Murder,
+     main = "Murder vs W = Assault / sqrt(UrbanPop)",
+     xlab = "W", ylab = "Murder", pch = 19, col = "steelblue")
+abline(lm(Murder ~ W, data = USArrests), col = "red", lwd = 2)
+```
+
+```{r setup, include=FALSE}
+modelo_W <- lm(Murder ~ W, data = USArrests)
+summary(modelo_W)
+
+```
+Notemos que este modelo es mejoro ligeramente y chanse podriamos considerarlo como un mejor modelo
+
+## Ya que consideramos que en efecto pude ser un mejor modelos hagamos la verificacion de los supuestos
+
+```{r setup, include=FALSE}
+# 1. Gráfico de residuos vs valores ajustados
+plot(modelo_W$fitted.values, modelo_W$residuals,
+     main = "Residuos vs Ajustados", xlab = "Valores ajustados", ylab = "Residuos",
+     pch = 19, col = "steelblue")
+abline(h = 0, col = "red")
+
+# 2. QQ plot (normalidad de residuos)
+qqnorm(modelo_W$residuals, main = "QQ Plot de residuos")
+qqline(modelo_W$residuals, col = "red")
+
+# 3. Test de normalidad de Shapiro-Wilk
+shapiro.test(modelo_W$residuals)
+
+# 4. Test de homocedasticidad de Breusch-Pagan
+library(lmtest)
+bptest(modelo_W)
+
+# 5. Influencia y valores atípicos
+library(car)
+influencePlot(modelo_W)
+
+```
+Notemos como todos lo supuestos y se cumplen por lo que podemos continuar con el modelo
+
+## Eliminemos del modelo a carolina del norte y como vunso con el diagrama tenemos que tiene mucha influencia a si que hagamoslo para ver como cambiaria nuestro modelo 
+
+```{r setup, include=FALSE}
+# Remover la observación de North Carolina
+USArrests_nc <- USArrests[rownames(USArrests) != "North Carolina", ]
+
+# Recalcular W sin Carolina del Norte
+USArrests_nc$W <- USArrests_nc$Assault / sqrt(USArrests_nc$UrbanPop)
+
+# Nuevos modelos
+modelo_nc_1 <- lm(Murder ~ Assault, data = USArrests_nc)
+modelo_nc_2 <- lm(Murder ~ UrbanPop, data = USArrests_nc)
+modelo_nc_3 <- lm(Murder ~ W, data = USArrests_nc)
+
+# Nuestro mejor amigo summary para comparar R^2
+summary(modelo_nc_1)$r.squared
+summary(modelo_nc_2)$r.squared
+summary(modelo_nc_3)$r.squared
+
+```
+
+Notemos que el modelo Murder∼W mejora su ajuste tras remover a Carolina del Norte (de 0.66 a 0.68), y sigue siendo el mejor modelo.
+
+Por lo que apartir de esto lo consideramos como nuevo mejor modelo por lo que volamos a revisar los supuestos:
+
+```{r setup, include=FALSE}
+# 1. Gráfico de residuos vs valores ajustados
+plot(modelo_nc_3$fitted.values, modelo_nc_3$residuals,
+     main = "Residuos vs Ajustados", xlab = "Valores ajustados", ylab = "Residuos",
+     pch = 19, col = "steelblue")
+abline(h = 0, col = "red")
+
+# 2. QQ plot (normalidad de residuos)
+qqnorm(modelo_nc_3$residuals, main = "QQ Plot de residuos")
+qqline(modelo_nc_3$residuals, col = "red")
+
+# 3. Test de normalidad de Shapiro-Wilk
+shapiro.test(modelo_nc_3$residuals)
+
+# 4. Test de homocedasticidad de Breusch-Pagan
+library(lmtest)
+bptest(modelo_nc_3)
+
+# 5. Influencia y valores atípicos
+library(car)
+influencePlot(modelo_nc_3)
+
+```
+Con todo esto confirmamos que sigue cumpliendo los supuestos a si que en efecto tenemos un nuevo mejor modelo
+
+## Realicemos las pruebas para los coeficientes del modelo $\beta_0$ y $\beta_1$ y considerando esto crear un intervalo de confianza para $\beta_0$
+
+Para esto volvemos a utilizar la fabulosa funcion summary
+
+```{r setup, include=FALSE}
+modelo_final <- lm(Murder ~ W, data = USArrests_nc)
+summary(modelo_final)
+```
+
+
+En este caso notemos que solo se cumple para $\beta_1$ a si que procederemos a realizar un intervalo de confianza para $\beta_1$
+
+```{r setup, include=FALSE}
+confint(modelo_final, level = 0.95)
+```
+
+
+Ahora notemos que nuestro modelo no tiene un interceptor adecuado es decir $\beta_0 = 0$ probemos un modelo sin $\beta_0$
+
+```{r setup, include=FALSE}
+
+modelo_sin_intercepto <- lm(Murder ~ 0 + W, data = USArrests_nc)
+summary(modelo_sin_intercepto)
+
+```
+
+Dejemos este modelo como modelo final ya que notemos que su efectividad aumento muchisimo encomparacion con los anteriores para confirmar que este va ser nuestro modelo final veamos que cumple los supuestos
+
+```{r setup, include=FALSE}
+# 1. Gráfico de residuos vs valores ajustados
+plot(modelo_sin_intercepto$fitted.values, modelo_sin_intercepto$residuals,
+     main = "Residuos vs Ajustados", xlab = "Valores ajustados", ylab = "Residuos",
+     pch = 19, col = "steelblue")
+abline(h = 0, col = "red")
+
+# 2. QQ plot (normalidad de residuos)
+qqnorm(modelo_sin_intercepto$residuals, main = "QQ Plot de residuos")
+qqline(modelo_sin_intercepto$residuals, col = "red")
+
+# 3. Test de normalidad de Shapiro-Wilk
+shapiro.test(modelo_sin_intercepto$residuals)
+
+# 5. Influencia y valores atípicos
+library(car)
+influencePlot(modelo_sin_intercepto)
+
+```
+
+Como podemos ver cjmplio todos los supuestos y definitivamente es el mejor modelo hasta el momento con una $R^2 = 0.92$ 
+
+
+## Volveremos a plantear la situacion anterior hipotetica pero ahora con nuestro nuevo modelo
+
+
+```{r setup, include=FALSE}
+W_final <- 140 / sqrt(83.33)
+W_final
+
+#Con esto obtenemos la tasa esperada i.e tenemos nuestra estimacion puntual
+data_final <- data.frame(W = W_final)
+predict(modelo_sin_intercepto, newdata = data_final)
+
+```
+Ahora continuemos con nuestro intervalo de confianza
+
+```{r setup, include=FALSE}
+predict(modelo_sin_intercepto, newdata = data_final, interval = "prediction", level = 0.95)
+```
+Volvamos a dar la interpretacion para $\beta_1$ del nuevo modelo final
+
+```{r setup, include=FALSE}
+summary(modelo_sin_intercepto)
+```
+Tenemos que Por cada unidad adicional en W (es decir, por cada aumento proporcional en la tasa de asaltos es ajustada por población urbana), la tasa de asesinatos aumenta en 0.37213 asesinatos por cada 100,000 habitantes, en promedio, manteniendo lo demás constante.
+
+##Ya para finalizar dare mis concluciones de todo este proceso
+
+Primero se nos indico realizar un analisis acerca de la relacion de los tipos de crimenes en estados unidos en un inicio se nos indico realizar 3 modelos de los cuales descartamos 2 ya que no cumplian tener una relacion lineal entre sus variables a si no siendo adecuados ademas de que su tasa de efectividad es menor con respecto al primero, una vez realizado este analisis y desechado los dos modelos que no funcionaron (2 y 3) podemos pasar a realizar ciertos ajustes el primero de ellos se dio al momento de realizar un ajuste de la poblacion y como segundo ajuste fue una transformacion para poder ajustar el numero de asaltos segun una proporcion de la poblacion con la variable W despues de esto pudimos observar que aun que el modelo mejoraba ligeramente no era aun muy bueno del todo a si que seguimos analizando con la funcion que nos permite ver datos atipicos en nuestra inforamcion que podrian estar afectando al modelo pudimos observar que carolina del norte tenia una gran concentracion de datos anomalos a si dandonos la idea o por lo menos el querer eliminarlo para a si ver si el modelo mejoraba una vez realizado esto planteamos un nuevo modelo sin carolina del norte podemos ver que nuevamente tenemos un ligeramente superior pero sigue sin reprecentar una mejora genuina aun a si continuamos y hacemos la verificacion de los supuestos como en los modelos anteriores para a si ver que en efecto es un modelo que tiene sentido con la teoria ya que sin estos supuestos podriamos estar cayendo en un error simplemente fijandonos en la $R^2$ por lo que en efecto al confirmar los supuestos vemos que el modelo es adecuado a continuacion podemos ver que desde el inicio pudimos ver que $\beta_0 = 0$ i.e el interceptor no es adecuado, por lo que procedemos a realizar las pruebas pertinentes para a si ver si es viable un modelo sin $\beta_0$ (interceptor) por lo que podemos eliminarlo del modelo ya que las pruebas confirman que puede ser un modelo viable una vez realizado esto creamos este nuevo modelo obviamente todo el tiempo nos basamos sobre el modelo que hemos estado mejorando una vez realizado esto volvemos a confirmar los supuestos viendo que en efecto se cumplen y podemo observar que porfin nuestra $R^2$ es decir la fiabilidad del modelo mejoro significativamente con respecto al anterior a si confirmando y obteniendo el mejor modelo posible.
+
+Las conclusiones no incluyen explicaciones practicas con respecto a la interpretacion de los modelos ya que estas se encuentran cada vez se hace algun ajuste donde estuve explicando como se interpretaba cada cosa :)
+
+```{r setup, include=FALSE}
+
+```
+
